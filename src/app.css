@@ -158,6 +158,36 @@ select {
   box-shadow: 0 0 0 4px rgba(79, 70, 229, 0.1);
 }
 
+.recommendation-banner {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 16px;
+  border: 1px solid rgba(79, 70, 229, 0.16);
+  border-radius: 16px;
+  background: var(--accent-soft);
+}
+
+.recommendation-banner div {
+  display: grid;
+  gap: 4px;
+}
+
+.recommendation-banner strong {
+  font-size: 0.9rem;
+}
+
+.recommendation-banner span,
+.recommendation-banner p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.recommendation-banner p {
+  text-align: right;
+}
+
 .primary-button {
   display: inline-flex;
   align-items: center;
@@ -252,7 +282,8 @@ select {
 }
 
 .product-meta,
-.product-notes {
+.product-notes,
+.product-tips {
   margin: 0;
   color: var(--muted);
   line-height: 1.6;
@@ -266,6 +297,34 @@ select {
   margin-top: 10px;
 }
 
+.product-tips {
+  margin-top: 10px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: #ffffff;
+  border: 1px solid rgba(79, 70, 229, 0.12);
+}
+
+.storage-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.storage-summary span {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  padding: 5px 10px;
+  border-radius: 999px;
+  background: #ffffff;
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
 .product-days {
   margin: 12px 0 0;
   font-size: 0.9rem;
@@ -273,15 +332,16 @@ select {
 }
 
 .delete-button {
-  width: 32px;
-  height: 32px;
+  min-width: 72px;
+  min-height: 34px;
+  padding: 0 12px;
   border: 1px solid #ff6b6b;
   border-radius: 8px;
   background: #fff5f5;
   color: #ff6b6b;
   cursor: pointer;
   font-weight: 700;
-  font-size: 18px;
+  font-size: 0.82rem;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -301,20 +361,23 @@ select {
 
 .product-actions {
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
   flex-shrink: 0;
+  justify-content: flex-end;
 }
 
 .edit-button {
-  width: 32px;
-  height: 32px;
+  min-width: 72px;
+  min-height: 34px;
+  padding: 0 12px;
   border: 1px solid #4f46e5;
   border-radius: 8px;
   background: #eef1f7;
   color: #4f46e5;
   cursor: pointer;
   font-weight: 700;
-  font-size: 18px;
+  font-size: 0.82rem;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -397,5 +460,17 @@ select {
   }
   .dashboard-list {
     grid-template-columns: 1fr;
+  }
+  .product-card {
+    grid-template-columns: 1fr;
+  }
+  .recommendation-banner {
+    flex-direction: column;
+  }
+  .recommendation-banner p {
+    text-align: left;
+  }
+  .product-actions {
+    justify-content: flex-start;
   }
 }

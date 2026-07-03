@@ -4,14 +4,19 @@
  * @returns {number} Days remaining (negative if expired)
  */
 export const calculateDaysRemaining = (expiryDate) => {
+  if (!expiryDate) return 0;
+
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   
-  const expiry = new Date(expiryDate);
+  // Parse YYYY-MM-DD manually to construct date in local time zone
+  const [year, month, day] = expiryDate.split('-').map(Number);
+  const expiry = new Date(year, month - 1, day);
   expiry.setHours(0, 0, 0, 0);
   
   const diffTime = expiry - today;
-  const daysRemaining = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  // Use Math.round to account for daylight saving time adjustments
+  const daysRemaining = Math.round(diffTime / (1000 * 60 * 60 * 24));
   
   return daysRemaining;
 };

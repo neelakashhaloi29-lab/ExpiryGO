@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import Layout from './components/Layout';
 import DashboardCard from './components/DashboardCard';
 import { CATEGORIES, getCategoryColor } from './constants/categories';
+import { STORAGE_LOCATIONS, findFoodRecommendation } from './constants/foodKnowledge';
 import { getProductStatus, formatDaysRemaining } from './utils/dateHelpers';
 
 const STORAGE_KEY = 'expiry-go-products';
@@ -16,9 +17,47 @@ function App() {
   const [category, setCategory] = useState(CATEGORIES[0]);
   const [quantity, setQuantity] = useState(1);
   const [notes, setNotes] = useState('');
+  const [storageLocation, setStorageLocation] = useState('');
+  const [estimatedShelfLife, setEstimatedShelfLife] = useState('');
+  const [storageTips, setStorageTips] = useState('');
+  const [storageFieldsEdited, setStorageFieldsEdited] = useState(false);
   
   // Edit state
   const [editingId, setEditingId] = useState(null);
+
+  const recommendation = findFoodRecommendation(name);
+
+  const resetForm = () => {
+    setName('');
+    setCategory(CATEGORIES[0]);
+    setQuantity(1);
+    setExpiryDate('');
+    setNotes('');
+    setStorageLocation('');
+    setEstimatedShelfLife('');
+    setStorageTips('');
+    setStorageFieldsEdited(false);
+  };
+
+  const handleNameChange = (value) => {
+    setName(value);
+
+    if (storageFieldsEdited) return;
+
+    const nextRecommendation = findFoodRecommendation(value);
+    setStorageLocation(nextRecommendation?.storageLocation || '');
+    setEstimatedShelfLife(nextRecommendation?.shelfLife || '');
+    setStorageTips(nextRecommendation?.tips || '');
+  };
+
+  const markStorageFieldsEdited = () => {
+    setStorageFieldsEdited(true);
+  };
+
+  const getQuantityValue = () => {
+    const parsedQuantity = parseInt(quantity, 10);
+    return Number.isFinite(parsedQuantity) && parsedQuantity > 0 ? parsedQuantity : 1;
+  };
 
   // Load products from storage on mount
   useEffect(() => {
@@ -45,20 +84,19 @@ function App() {
 
     const newProduct = {
       category,
-      quantity: parseInt(quantity, 10),
+      quantity: getQuantityValue(),
       id: typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(16).slice(2)}`,
       name: name.trim(),
       expiryDate,
       notes: notes.trim(),
+      storageLocation,
+      estimatedShelfLife: estimatedShelfLife.trim(),
+      storageTips: storageTips.trim(),
       createdAt: new Date().toISOString(),
     };
 
-    setCategory(CATEGORIES[0]);
-    setQuantity(1);
     setProducts([newProduct, ...products]);
-    setName('');
-    setExpiryDate('');
-    setNotes('');
+    resetForm();
   };
 
   const handleDeleteProduct = (id) => {
@@ -71,7 +109,13 @@ function App() {
     setCategory(product.category);
     setQuantity(product.quantity);
     setExpiryDate(product.expiryDate);
-    setNotes(product.notes);
+    setNotes(product.notes || '');
+    setStorageLocation(product.storageLocation || '');
+    setEstimatedShelfLife(product.estimatedShelfLife || '');
+    setStorageTips(product.storageTips || '');
+    setStorageFieldsEdited(
+      Boolean(product.storageLocation || product.estimatedShelfLife || product.storageTips)
+    );
   };
 
   const handleSaveEdit = () => {
@@ -84,29 +128,24 @@ function App() {
               ...product,
               name: name.trim(),
               category,
-              quantity: parseInt(quantity, 10),
+              quantity: getQuantityValue(),
               expiryDate,
               notes: notes.trim(),
+              storageLocation,
+              estimatedShelfLife: estimatedShelfLife.trim(),
+              storageTips: storageTips.trim(),
             }
           : product
       )
     );
 
     setEditingId(null);
-    setName('');
-    setCategory(CATEGORIES[0]);
-    setQuantity(1);
-    setExpiryDate('');
-    setNotes('');
+    resetForm();
   };
 
   const handleCancelEdit = () => {
     setEditingId(null);
-    setName('');
-    setCategory(CATEGORIES[0]);
-    setQuantity(1);
-    setExpiryDate('');
-    setNotes('');
+    resetForm();
   };
 
   return (
@@ -133,10 +172,22 @@ function App() {
               <input
                 type="text"
                 value={name}
-                onChange={(e) => setName(e.target.value)}
+                onChange={(e) => handleNameChange(e.target.value)}
                 placeholder="e.g. Milk, Yogurt, Pain killer"
               />
             </label>
+
+            {recommendation && (
+              <div className="recommendation-banner field-full">
+                <div>
+                  <strong>Suggested from food knowledge</strong>
+                  <span>{recommendation.foodName}</span>
+                </div>
+                <p>
+                  {recommendation.storageLocation} | {recommendation.shelfLife}
+                </p>
+              </div>
+            )}
 
             <label className="field">
               <span>Category</span>
@@ -171,12 +222,56 @@ function App() {
               />
             </label>
 
+            <label className="field">
+              <span>Storage location</span>
+              <select
+                value={storageLocation}
+                onChange={(e) => {
+                  markStorageFieldsEdited();
+                  setStorageLocation(e.target.value);
+                }}
+              >
+                <option value="">No recommendation</option>
+                {STORAGE_LOCATIONS.map((location) => (
+                  <option key={location} value={location}>
+                    {location}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label className="field">
+              <span>Estimated shelf life</span>
+              <input
+                type="text"
+                value={estimatedShelfLife}
+                onChange={(e) => {
+                  markStorageFieldsEdited();
+                  setEstimatedShelfLife(e.target.value);
+                }}
+                placeholder="e.g. 5-7 days after opening"
+              />
+            </label>
+
             <label className="field field-full">
               <span>Notes (optional)</span>
               <textarea
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
                 placeholder="Store instructions, batch info, or location"
+                rows="3"
+              />
+            </label>
+
+            <label className="field field-full">
+              <span>Storage tips</span>
+              <textarea
+                value={storageTips}
+                onChange={(e) => {
+                  markStorageFieldsEdited();
+                  setStorageTips(e.target.value);
+                }}
+                placeholder="Food-specific storage guidance"
                 rows="3"
               />
             </label>
@@ -242,9 +337,16 @@ function App() {
                       <p className="product-meta" style={{ color: getCategoryColor(product.category) }}>{product.category}</p>
                       <p className="product-meta">Qty: {product.quantity}</p>
                       <p className="product-meta">Expiry: {product.expiryDate}</p>
+                      {(product.storageLocation || product.estimatedShelfLife) && (
+                        <div className="storage-summary">
+                          {product.storageLocation && <span>{product.storageLocation}</span>}
+                          {product.estimatedShelfLife && <span>{product.estimatedShelfLife}</span>}
+                        </div>
+                      )}
                       <p className="product-days" style={{ color: status.color }}>
                         {formatDaysRemaining(status.daysRemaining)}
                       </p>
+                      {product.storageTips && <p className="product-tips">{product.storageTips}</p>}
                       {product.notes && <p className="product-notes">{product.notes}</p>}
                     </div>
                     <div className="product-actions">
@@ -253,14 +355,14 @@ function App() {
                         onClick={() => handleStartEdit(product)}
                         title="Edit this product"
                       >
-                        ✎
+                        Edit
                       </button>
                       <button
                         className="delete-button"
                         onClick={() => handleDeleteProduct(product.id)}
                         title="Delete this product"
                       >
-                        ✕
+                        Delete
                       </button>
                     </div>
                   </article>
