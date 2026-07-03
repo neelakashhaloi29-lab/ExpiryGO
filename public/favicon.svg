@@ -1,0 +1,26 @@
+﻿<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100">
+  <defs>
+    <linearGradient id="grad1" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#FF6B6B;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#FF5252;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  
+  <!-- Calendar background with gradient -->
+  <rect x="15" y="20" width="70" height="70" rx="6" fill="url(#grad1)" />
+  
+  <!-- Calendar top bar -->
+  <rect x="15" y="20" width="70" height="15" rx="6" fill="#C92A2A" opacity="0.8"/>
+  
+  <!-- Calendar holes -->
+  <circle cx="28" cy="12" r="3" fill="#FF6B6B"/>
+  <circle cx="72" cy="12" r="3" fill="#FF6B6B"/>
+  
+  <!-- Checkmark (success indicator) -->
+  <g>
+    <!-- Checkmark circle background -->
+    <circle cx="50" cy="50" r="28" fill="#ffffff" opacity="0.2"/>
+    <!-- Checkmark -->
+    <path d="M 38 50 L 46 58 L 62 42" stroke="white" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+</svg>
