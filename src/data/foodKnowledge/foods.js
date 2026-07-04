@@ -161,6 +161,7 @@ const FOOD_GROUPS = [
       'Gram Flour', 'Rice Flour', 'Corn Flour', 'Semolina', 'Oats', 'Steel Cut Oats',
       'Rolled Oats', 'Barley', 'Buckwheat', 'Bulgur', 'Couscous', 'Millet',
       'Ragi', 'Jowar', 'Bajra', 'Quinoa', 'Amaranth', 'Polenta', 'Cornmeal',
+      ['Milk Powder', ['powdered milk', 'dry milk'], { category: 'Dairy & Eggs', defaultUnit: 'g', quantityUnits: ['g', 'kg', 'cup', 'pack'], profile: 'dairy' }],
       'Spaghetti', 'Penne', 'Macaroni', 'Fusilli', 'Rice Noodles', 'Egg Noodles',
       'Ramen Noodles', 'Soba Noodles', 'Udon Noodles', 'Vermicelli',
     ],

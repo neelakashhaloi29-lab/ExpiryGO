@@ -188,6 +188,74 @@ select {
   text-align: right;
 }
 
+.autocomplete-field {
+  position: relative;
+}
+
+.autocomplete-helper {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.84rem;
+  line-height: 1.5;
+}
+
+.autocomplete-panel {
+  display: grid;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--surface);
+  box-shadow: 0 14px 28px rgba(15, 23, 42, 0.08);
+}
+
+.autocomplete-item {
+  display: grid;
+  gap: 3px;
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid transparent;
+  border-radius: 12px;
+  background: var(--surface-strong);
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+}
+
+.autocomplete-item:hover {
+  border-color: rgba(79, 70, 229, 0.25);
+  background: #ffffff;
+}
+
+.autocomplete-item-name {
+  font-weight: 700;
+}
+
+.autocomplete-item-meta {
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.match-banner {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+  padding: 12px 16px;
+  border: 1px solid rgba(16, 185, 129, 0.18);
+  border-radius: 16px;
+  background: rgba(16, 185, 129, 0.08);
+}
+
+.match-banner strong {
+  font-size: 0.9rem;
+}
+
+.match-banner span {
+  color: var(--muted);
+  font-weight: 700;
+}
+
 .primary-button {
   display: inline-flex;
   align-items: center;

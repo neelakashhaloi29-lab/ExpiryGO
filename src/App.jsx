@@ -1,61 +1,79 @@
 import { useEffect, useState } from 'react';
 import Layout from './components/Layout';
 import DashboardCard from './components/DashboardCard';
+import FoodKnowledgeAutocomplete from './components/FoodKnowledgeAutocomplete';
 import { CATEGORIES, getCategoryColor } from './constants/categories';
-import { STORAGE_LOCATIONS, findFoodRecommendation } from './constants/foodKnowledge';
 import { getProductStatus, formatDaysRemaining } from './utils/dateHelpers';
+import {
+  applyFoodKnowledgeDefaults,
+  createEmptyFoodFormState,
+  createFoodOverrideState,
+  resolveFoodKnowledgeMatch,
+} from './services/foodKnowledgeFormService';
+import { STORAGE_LOCATIONS } from './data/foodKnowledge';
 
 const STORAGE_KEY = 'expiry-go-products';
 
 function App() {
   const [products, setProducts] = useState([]);
   const [isLoaded, setIsLoaded] = useState(false);
-  
-  // Add form state
-  const [name, setName] = useState('');
-  const [expiryDate, setExpiryDate] = useState('');
-  const [category, setCategory] = useState(CATEGORIES[0]);
-  const [quantity, setQuantity] = useState(1);
-  const [notes, setNotes] = useState('');
-  const [storageLocation, setStorageLocation] = useState('');
-  const [estimatedShelfLife, setEstimatedShelfLife] = useState('');
-  const [storageTips, setStorageTips] = useState('');
-  const [storageFieldsEdited, setStorageFieldsEdited] = useState(false);
-  
+  const [form, setForm] = useState(() => createEmptyFoodFormState(CATEGORIES[0]));
+  const [fieldOverrides, setFieldOverrides] = useState(() => createFoodOverrideState());
+  const [foodSuggestions, setFoodSuggestions] = useState([]);
+
   // Edit state
   const [editingId, setEditingId] = useState(null);
 
-  const recommendation = findFoodRecommendation(name);
-
   const resetForm = () => {
-    setName('');
-    setCategory(CATEGORIES[0]);
-    setQuantity(1);
-    setExpiryDate('');
-    setNotes('');
-    setStorageLocation('');
-    setEstimatedShelfLife('');
-    setStorageTips('');
-    setStorageFieldsEdited(false);
+    setForm(createEmptyFoodFormState(CATEGORIES[0]));
+    setFieldOverrides(createFoodOverrideState());
+    setFoodSuggestions([]);
+  };
+
+  const updateFormField = (field, value, { markOverride = false } = {}) => {
+    setForm((currentForm) => ({ ...currentForm, [field]: value }));
+
+    if (!markOverride) return;
+
+    setFieldOverrides((currentOverrides) => ({
+      ...currentOverrides,
+      [field]: true,
+    }));
   };
 
   const handleNameChange = (value) => {
-    setName(value);
+    const lookup = resolveFoodKnowledgeMatch(value);
 
-    if (storageFieldsEdited) return;
+    setForm((currentForm) => {
+      const nextForm = {
+        ...currentForm,
+        name: value,
+        matchedFoodId: '',
+        matchedFoodName: '',
+      };
 
-    const nextRecommendation = findFoodRecommendation(value);
-    setStorageLocation(nextRecommendation?.storageLocation || '');
-    setEstimatedShelfLife(nextRecommendation?.shelfLife || '');
-    setStorageTips(nextRecommendation?.tips || '');
+      return lookup.shouldAutoPopulate && lookup.matchedFood
+        ? applyFoodKnowledgeDefaults(nextForm, lookup.matchedFood, fieldOverrides)
+        : nextForm;
+    });
+
+    setFoodSuggestions(lookup.suggestions);
+
+    if (lookup.shouldAutoPopulate && lookup.matchedFood) {
+      setFieldOverrides(createFoodOverrideState());
+    }
   };
 
-  const markStorageFieldsEdited = () => {
-    setStorageFieldsEdited(true);
+  const handleSuggestionSelect = (food) => {
+    setForm((currentForm) =>
+      applyFoodKnowledgeDefaults({ ...currentForm, name: food.name }, food, createFoodOverrideState())
+    );
+    setFieldOverrides(createFoodOverrideState());
+    setFoodSuggestions(resolveFoodKnowledgeMatch(food.name).suggestions);
   };
 
   const getQuantityValue = () => {
-    const parsedQuantity = parseInt(quantity, 10);
+    const parsedQuantity = parseInt(form.quantity, 10);
     return Number.isFinite(parsedQuantity) && parsedQuantity > 0 ? parsedQuantity : 1;
   };
 
@@ -80,18 +98,25 @@ function App() {
   }, [products, isLoaded]);
 
   const handleAddProduct = () => {
-    if (!name.trim() || !expiryDate) return;
+    if (!form.name.trim() || !form.expiryDate) return;
 
     const newProduct = {
-      category,
+      category: form.category,
       quantity: getQuantityValue(),
       id: typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(16).slice(2)}`,
-      name: name.trim(),
-      expiryDate,
-      notes: notes.trim(),
-      storageLocation,
-      estimatedShelfLife: estimatedShelfLife.trim(),
-      storageTips: storageTips.trim(),
+      name: form.name.trim(),
+      expiryDate: form.expiryDate,
+      notes: form.notes.trim(),
+      unit: form.unit.trim(),
+      pantryShelfLife: form.pantryShelfLife.trim(),
+      refrigeratorShelfLife: form.refrigeratorShelfLife.trim(),
+      freezerShelfLife: form.freezerShelfLife.trim(),
+      storageLocation: form.storageLocation.trim(),
+      storageTemperature: form.storageTemperature.trim(),
+      storageTips: form.storageTips.trim(),
+      spoilageSigns: form.spoilageSigns.trim(),
+      matchedFoodId: form.matchedFoodId,
+      matchedFoodName: form.matchedFoodName,
       createdAt: new Date().toISOString(),
     };
 
@@ -105,35 +130,51 @@ function App() {
 
   const handleStartEdit = (product) => {
     setEditingId(product.id);
-    setName(product.name);
-    setCategory(product.category);
-    setQuantity(product.quantity);
-    setExpiryDate(product.expiryDate);
-    setNotes(product.notes || '');
-    setStorageLocation(product.storageLocation || '');
-    setEstimatedShelfLife(product.estimatedShelfLife || '');
-    setStorageTips(product.storageTips || '');
-    setStorageFieldsEdited(
-      Boolean(product.storageLocation || product.estimatedShelfLife || product.storageTips)
-    );
+    setForm({
+      ...createEmptyFoodFormState(CATEGORIES[0]),
+      name: product.name,
+      expiryDate: product.expiryDate,
+      category: product.category,
+      quantity: String(product.quantity ?? 1),
+      unit: product.unit || '',
+      pantryShelfLife: product.pantryShelfLife || '',
+      refrigeratorShelfLife: product.refrigeratorShelfLife || '',
+      freezerShelfLife: product.freezerShelfLife || '',
+      storageLocation: product.storageLocation || '',
+      storageTemperature: product.storageTemperature || '',
+      storageTips: product.storageTips || '',
+      spoilageSigns: product.spoilageSigns || '',
+      notes: product.notes || '',
+      matchedFoodId: product.matchedFoodId || '',
+      matchedFoodName: product.matchedFoodName || '',
+    });
+    setFieldOverrides(createFoodOverrideState());
+    setFoodSuggestions([]);
   };
 
   const handleSaveEdit = () => {
-    if (!name.trim() || !expiryDate) return;
+    if (!form.name.trim() || !form.expiryDate) return;
 
     setProducts(
       products.map((product) =>
         product.id === editingId
           ? {
               ...product,
-              name: name.trim(),
-              category,
+              name: form.name.trim(),
+              category: form.category,
               quantity: getQuantityValue(),
-              expiryDate,
-              notes: notes.trim(),
-              storageLocation,
-              estimatedShelfLife: estimatedShelfLife.trim(),
-              storageTips: storageTips.trim(),
+              unit: form.unit.trim(),
+              expiryDate: form.expiryDate,
+              notes: form.notes.trim(),
+              pantryShelfLife: form.pantryShelfLife.trim(),
+              refrigeratorShelfLife: form.refrigeratorShelfLife.trim(),
+              freezerShelfLife: form.freezerShelfLife.trim(),
+              storageLocation: form.storageLocation.trim(),
+              storageTemperature: form.storageTemperature.trim(),
+              storageTips: form.storageTips.trim(),
+              spoilageSigns: form.spoilageSigns.trim(),
+              matchedFoodId: form.matchedFoodId,
+              matchedFoodName: form.matchedFoodName,
             }
           : product
       )
@@ -167,33 +208,28 @@ function App() {
           description={editingId ? "Update product details and save changes." : "Save a new item with expiry date and optional notes."}
         >
           <div className="form-grid">
-            <label className="field">
-              <span>Product name</span>
-              <input
-                type="text"
-                value={name}
-                onChange={(e) => handleNameChange(e.target.value)}
-                placeholder="e.g. Milk, Yogurt, Pain killer"
-              />
-            </label>
+            <FoodKnowledgeAutocomplete
+              label="Product name"
+              value={form.name}
+              placeholder="e.g. Milk, Millet, Pain killer"
+              suggestions={foodSuggestions}
+              onChange={handleNameChange}
+              onSelectSuggestion={handleSuggestionSelect}
+              helperText="Suggestions appear while typing. Selecting one fills the form."
+            />
 
-            {recommendation && (
-              <div className="recommendation-banner field-full">
-                <div>
-                  <strong>Suggested from food knowledge</strong>
-                  <span>{recommendation.foodName}</span>
-                </div>
-                <p>
-                  {recommendation.storageLocation} | {recommendation.shelfLife}
-                </p>
+            {form.matchedFoodName && (
+              <div className="match-banner field-full">
+                <strong>Matched food</strong>
+                <span>{form.matchedFoodName}</span>
               </div>
             )}
 
             <label className="field">
               <span>Category</span>
               <select
-                value={category}
-                onChange={(e) => setCategory(e.target.value)}
+                value={form.category}
+                onChange={(e) => updateFormField('category', e.target.value, { markOverride: true })}
               >
                 {CATEGORIES.map((cat) => (
                   <option key={cat} value={cat}>
@@ -208,8 +244,18 @@ function App() {
               <input
                 type="number"
                 min="1"
-                value={quantity}
-                onChange={(e) => setQuantity(e.target.value)}
+                value={form.quantity}
+                onChange={(e) => updateFormField('quantity', e.target.value, { markOverride: true })}
+              />
+            </label>
+
+            <label className="field">
+              <span>Default unit</span>
+              <input
+                type="text"
+                value={form.unit}
+                onChange={(e) => updateFormField('unit', e.target.value, { markOverride: true })}
+                placeholder="e.g. piece, g, bottle"
               />
             </label>
 
@@ -217,22 +263,51 @@ function App() {
               <span>Expiry date</span>
               <input
                 type="date"
-                value={expiryDate}
-                onChange={(e) => setExpiryDate(e.target.value)}
+                value={form.expiryDate}
+                onChange={(e) => updateFormField('expiryDate', e.target.value)}
+              />
+            </label>
+
+            <label className="field">
+              <span>Pantry shelf life</span>
+              <input
+                type="text"
+                value={form.pantryShelfLife}
+                onChange={(e) => updateFormField('pantryShelfLife', e.target.value, { markOverride: true })}
+                placeholder="e.g. 2-7 days"
+              />
+            </label>
+
+            <label className="field">
+              <span>Refrigerator shelf life</span>
+              <input
+                type="text"
+                value={form.refrigeratorShelfLife}
+                onChange={(e) =>
+                  updateFormField('refrigeratorShelfLife', e.target.value, { markOverride: true })
+                }
+                placeholder="e.g. 1-2 weeks"
+              />
+            </label>
+
+            <label className="field">
+              <span>Freezer shelf life</span>
+              <input
+                type="text"
+                value={form.freezerShelfLife}
+                onChange={(e) => updateFormField('freezerShelfLife', e.target.value, { markOverride: true })}
+                placeholder="e.g. 3 months"
               />
             </label>
 
             <label className="field">
               <span>Storage location</span>
               <select
-                value={storageLocation}
-                onChange={(e) => {
-                  markStorageFieldsEdited();
-                  setStorageLocation(e.target.value);
-                }}
+                value={form.storageLocation}
+                onChange={(e) => updateFormField('storageLocation', e.target.value, { markOverride: true })}
               >
-                <option value="">No recommendation</option>
-                {STORAGE_LOCATIONS.map((location) => (
+                <option value="">Select storage</option>
+                {Object.values(STORAGE_LOCATIONS).map((location) => (
                   <option key={location} value={location}>
                     {location}
                   </option>
@@ -241,24 +316,23 @@ function App() {
             </label>
 
             <label className="field">
-              <span>Estimated shelf life</span>
+              <span>Ideal storage temperature</span>
               <input
                 type="text"
-                value={estimatedShelfLife}
-                onChange={(e) => {
-                  markStorageFieldsEdited();
-                  setEstimatedShelfLife(e.target.value);
-                }}
-                placeholder="e.g. 5-7 days after opening"
+                value={form.storageTemperature}
+                onChange={(e) =>
+                  updateFormField('storageTemperature', e.target.value, { markOverride: true })
+                }
+                placeholder="e.g. 0-4 C"
               />
             </label>
 
             <label className="field field-full">
-              <span>Notes (optional)</span>
+              <span>Spoilage signs</span>
               <textarea
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                placeholder="Store instructions, batch info, or location"
+                value={form.spoilageSigns}
+                onChange={(e) => updateFormField('spoilageSigns', e.target.value, { markOverride: true })}
+                placeholder="Separate with commas or new lines"
                 rows="3"
               />
             </label>
@@ -266,12 +340,19 @@ function App() {
             <label className="field field-full">
               <span>Storage tips</span>
               <textarea
-                value={storageTips}
-                onChange={(e) => {
-                  markStorageFieldsEdited();
-                  setStorageTips(e.target.value);
-                }}
+                value={form.storageTips}
+                onChange={(e) => updateFormField('storageTips', e.target.value, { markOverride: true })}
                 placeholder="Food-specific storage guidance"
+                rows="3"
+              />
+            </label>
+
+            <label className="field field-full">
+              <span>Notes (optional)</span>
+              <textarea
+                value={form.notes}
+                onChange={(e) => updateFormField('notes', e.target.value)}
+                placeholder="Store instructions, batch info, or location"
                 rows="3"
               />
             </label>
@@ -280,7 +361,7 @@ function App() {
               className="primary-button"
               type="button"
               onClick={editingId ? handleSaveEdit : handleAddProduct}
-              disabled={!name.trim() || !expiryDate}
+              disabled={!form.name.trim() || !form.expiryDate}
             >
               {editingId ? "Save changes" : "Add product"}
             </button>
@@ -335,18 +416,26 @@ function App() {
                         </span>
                       </div>
                       <p className="product-meta" style={{ color: getCategoryColor(product.category) }}>{product.category}</p>
-                      <p className="product-meta">Qty: {product.quantity}</p>
+                      <p className="product-meta">
+                        Qty: {product.quantity}
+                        {product.unit ? ` ${product.unit}` : ''}
+                      </p>
                       <p className="product-meta">Expiry: {product.expiryDate}</p>
-                      {(product.storageLocation || product.estimatedShelfLife) && (
+                      {(product.storageLocation || product.pantryShelfLife || product.refrigeratorShelfLife || product.freezerShelfLife || product.storageTemperature) && (
                         <div className="storage-summary">
                           {product.storageLocation && <span>{product.storageLocation}</span>}
-                          {product.estimatedShelfLife && <span>{product.estimatedShelfLife}</span>}
+                          {product.storageTemperature && <span>{product.storageTemperature}</span>}
+                          {product.pantryShelfLife && <span>Pantry: {product.pantryShelfLife}</span>}
+                          {product.refrigeratorShelfLife && <span>Fridge: {product.refrigeratorShelfLife}</span>}
+                          {product.freezerShelfLife && <span>Freezer: {product.freezerShelfLife}</span>}
                         </div>
                       )}
                       <p className="product-days" style={{ color: status.color }}>
                         {formatDaysRemaining(status.daysRemaining)}
                       </p>
                       {product.storageTips && <p className="product-tips">{product.storageTips}</p>}
+                      {product.spoilageSigns && <p className="product-notes">Spoilage signs: {product.spoilageSigns}</p>}
+                      {product.matchedFoodName && <p className="product-notes">Matched food: {product.matchedFoodName}</p>}
                       {product.notes && <p className="product-notes">{product.notes}</p>}
                     </div>
                     <div className="product-actions">
