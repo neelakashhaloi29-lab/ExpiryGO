@@ -1,5 +1,14 @@
 # ExpiryGO Changelog
 
+## v1.0.0-beta.3 (2026-07-04)
+
+### Food Knowledge Foundation
+- Added a global food knowledge database foundation with 462 fully populated food records across international categories.
+- Added reusable schema/profile utilities for shelf-life, storage locations, temperature guidance, spoilage signs, quantity units, and freezing behavior.
+- Added a reusable food knowledge service with lookup, search, category filtering, stats, normalization, and database validation helpers.
+- Added automated tests enforcing required food fields, duplicate ID protection, 300+ record coverage, aliases, and search behavior.
+- Kept the new foundation separate from the UI for this milestone.
+
 ## v1.0.0-beta.2 (2026-07-04)
 
 ### Storage Intelligence
